@@ -1,0 +1,695 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "tmrlakehouse"
+		},
+		"AzureDataLakeStorage1_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage1'"
+		},
+		"tmrlakehouse-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'tmrlakehouse-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:tmrlakehouse.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://tmrbronzelayer.dfs.core.windows.net/"
+		},
+		"tmrlakehouse-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://tmrlhstorage.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/Pipeline 1')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "SqlPoolSink",
+								"allowPolyBase": true,
+								"polyBaseSettings": {
+									"rejectValue": 0,
+									"rejectType": "value",
+									"useTypeDefault": true
+								},
+								"tableOption": "autoCreate"
+							},
+							"enableStaging": true,
+							"stagingSettings": {
+								"linkedServiceName": {
+									"referenceName": "AzureDataLakeStorage1",
+									"type": "LinkedServiceReference"
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Json1",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SqlPoolTable1",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-02-26T04:00:35Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/Json1')]",
+				"[concat(variables('workspaceId'), '/datasets/SqlPoolTable1')]",
+				"[concat(variables('workspaceId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Json1')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "part-00000-c5306715-19b2-4051-9f8d-ebbac8d9d202-c000.json",
+						"folderPath": "data/data_20250225.json",
+						"fileSystem": "securities-price"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SqlPoolTable1')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "SqlPoolTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "pricerealtime"
+				},
+				"sqlPool": {
+					"referenceName": "tmr_dwh",
+					"type": "SqlPoolReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/sqlPools/tmr_dwh')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureDataLakeStorage1')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDataLakeStorage1_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/tmrlakehouse-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('tmrlakehouse-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/tmrlakehouse-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('tmrlakehouse-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Extract_data')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "sparkpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "cfa5b7a1-4ab9-4c19-a4a0-e4e852f59cd7"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/a27e5480-6d37-4b13-ae06-aed35c4c2aea/resourceGroups/tmrlakehouse/providers/Microsoft.Synapse/workspaces/tmrlakehouse/bigDataPools/sparkpool",
+						"name": "sparkpool",
+						"type": "Spark",
+						"endpoint": "https://tmrlakehouse.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net",
+							"authHeader": null
+						},
+						"sparkVersion": "3.4",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"extraHeader": null
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"source": [
+							"import sys\n",
+							"import os\n",
+							"import json\n",
+							"import requests\n",
+							"import pytz\n",
+							"from datetime import datetime\n",
+							"from pyspark.sql import SparkSession\n",
+							"from pyspark.sql.functions import col, from_unixtime, lit, current_timestamp\n",
+							"from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, TimestampType\n",
+							"\n",
+							"# Initialize Spark Session\n",
+							"spark = SparkSession.builder \\\n",
+							"    .appName(\"ADLS Data Processing\") \\\n",
+							"    .getOrCreate()\n",
+							"\n",
+							"# ADLS Gen2 Configuration\n",
+							"storage_account_name = \"tmrbronzelayer\"\n",
+							"container_name = \"securities-price\"\n",
+							"output_directory = f\"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/data/\"\n",
+							"\n",
+							"def get_currentprice(urlPrice, symbol, resolution):\n",
+							"    response = requests.get(urlPrice)\n",
+							"    priceParsed = json.loads(response.text)\n",
+							" \n",
+							"    if \"t\" not in priceParsed:\n",
+							"        print(f\"No data found for {symbol} at resolution {resolution}\")\n",
+							"        return None\n",
+							"\n",
+							"    # Chuyển đổi timestamps\n",
+							"    timestamps = priceParsed[\"t\"]\n",
+							"\n",
+							"    data = [(datetime.fromtimestamp(t, pytz.utc).astimezone(pytz.timezone(\"Asia/Ho_Chi_Minh\")),\n",
+							"             datetime.fromtimestamp(t, pytz.utc).astimezone(pytz.timezone(\"Asia/Ho_Chi_Minh\")).strftime('%Y-%m-%d'),\n",
+							"             int(resolution),\n",
+							"             symbol,\n",
+							"             float(priceParsed[\"o\"][i]),\n",
+							"             float(priceParsed[\"h\"][i]),\n",
+							"             float(priceParsed[\"l\"][i]),\n",
+							"             float(priceParsed[\"c\"][i]),\n",
+							"             float(priceParsed[\"v\"][i]),\n",
+							"             datetime.now(),\n",
+							"             datetime.now())\n",
+							"            for i, t in enumerate(timestamps)]\n",
+							"\n",
+							"    # Định nghĩa schema\n",
+							"    schema = StructType([\n",
+							"        StructField(\"data_time\", TimestampType(), True),\n",
+							"        StructField(\"data_date\", StringType(), True),\n",
+							"        StructField(\"resolution\", IntegerType(), True),\n",
+							"        StructField(\"ticker\", StringType(), True),\n",
+							"        StructField(\"open_price\", DoubleType(), True),\n",
+							"        StructField(\"highest_price\", DoubleType(), True),\n",
+							"        StructField(\"lowest_price\", DoubleType(), True),\n",
+							"        StructField(\"close_price\", DoubleType(), True),\n",
+							"        StructField(\"volume\", DoubleType(), True),\n",
+							"        StructField(\"created_at\", TimestampType(), True),\n",
+							"        StructField(\"updated_at\", TimestampType(), True),\n",
+							"    ])\n",
+							"\n",
+							"    # Tạo DataFrame Spark\n",
+							"    df = spark.createDataFrame(data, schema=schema)\n",
+							"    return df\n",
+							"\n",
+							"# Hàm tổng hợp dữ liệu từ danh sách mã chứng khoán\n",
+							"def aggregate_data(startdate, enddate, resolution, urlPrice, tickers):\n",
+							"    all_dataframes = []\n",
+							"\n",
+							"    for ticker in tickers:\n",
+							"        start_ts = int(startdate.timestamp())\n",
+							"        end_ts = int(enddate.timestamp())\n",
+							"        url = f\"{urlPrice}symbol={ticker}&resolution={resolution}&from={start_ts}&to={end_ts}\"\n",
+							"\n",
+							"        df = get_currentprice(url, ticker, resolution)\n",
+							"        if df is not None:\n",
+							"            all_dataframes.append(df)\n",
+							"\n",
+							"    if all_dataframes:\n",
+							"        final_df = all_dataframes[0]\n",
+							"        for df in all_dataframes[1:]:\n",
+							"            final_df = final_df.union(df)\n",
+							"        return final_df\n",
+							"    else:\n",
+							"        return None\n",
+							"\n",
+							"def process(startdate, enddate, resolution, urlPrice):\n",
+							"    print(f\"Processing for resolution {resolution}...\")\n",
+							"    \n",
+							"    tickers = [\"VN30F1M\"]\n",
+							"    final_df = aggregate_data(startdate, enddate, resolution, urlPrice, tickers)\n",
+							"    \n",
+							"    if final_df is not None:\n",
+							"        print(f\"Data collected for resolution {resolution}:\")\n",
+							"        final_df.show()\n",
+							"\n",
+							"        # Định dạng ngày hôm nay để đặt tên file\n",
+							"        today_str = datetime.now().strftime('%Y%m%d')\n",
+							"        file_name = f\"data_{today_str}.json\"\n",
+							"        \n",
+							"        # Đường dẫn đến ADLS\n",
+							"        json_final_path = output_directory + file_name\n",
+							"\n",
+							"        # Ghi dữ liệu ra file JSON (ghi đè nếu file đã tồn tại)\n",
+							"        final_df.coalesce(1).write.mode(\"overwrite\").json(json_final_path)\n",
+							"        \n",
+							"        print(f\"Data written to ADLS: {json_final_path}\")\n",
+							"        \n",
+							"        # Return file info for pipeline\n",
+							"        return {\n",
+							"            \"fileName\": file_name,\n",
+							"            \"filePath\": f\"/data/{file_name}\",\n",
+							"            \"fullPath\": json_final_path\n",
+							"        }\n",
+							"    else:\n",
+							"        print(\"No data available to write to ADLS!\")\n",
+							"        return None\n",
+							"\n",
+							"# Configure dates\n",
+							"timezone = pytz.timezone(\"Asia/Bangkok\")\n",
+							"today = datetime.now(timezone)\n",
+							"startdate = datetime(today.year, today.month, today.day, 8, 0, 0, tzinfo=timezone)\n",
+							"enddate = datetime(today.year, today.month, today.day, 16, 0, 0, tzinfo=timezone)\n",
+							"\n",
+							"# API URL\n",
+							"urlPrice = \"https://banggia.tvs.vn/datafeed/history?\"\n",
+							"\n",
+							"# Run process and return result for pipeline\n",
+							"result = process(startdate, enddate, 1, urlPrice)\n",
+							"\n",
+							"# Exit notebook with result\n",
+							"if result:\n",
+							"    notebookOutput = {\n",
+							"        \"status\": \"success\",\n",
+							"        \"result\": result\n",
+							"    }\n",
+							"else:\n",
+							"    notebookOutput = {\n",
+							"        \"status\": \"failed\",\n",
+							"        \"result\": None\n",
+							"    }\n",
+							"\n",
+							"mssparkutils.notebook.exit(notebookOutput)\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 9
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Load_data')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "sparkpool",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "ed44782e-ca29-402b-bffa-19cabd49d4ea"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "python"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/a27e5480-6d37-4b13-ae06-aed35c4c2aea/resourceGroups/tmrlakehouse/providers/Microsoft.Synapse/workspaces/tmrlakehouse/bigDataPools/sparkpool",
+						"name": "sparkpool",
+						"type": "Spark",
+						"endpoint": "https://tmrlakehouse.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkpool",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.4",
+						"nodeCount": 10,
+						"cores": 4,
+						"memory": 28,
+						"automaticScaleJobs": false
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {},
+						"source": [
+							"from pyspark.sql import SparkSession\n",
+							"from pyspark.sql.functions import col, substring\n",
+							"from pyspark.sql.types import (\n",
+							"    StructType, StructField, StringType, FloatType, LongType\n",
+							")\n",
+							"\n",
+							"# Initialize Spark Session\n",
+							"spark = SparkSession.builder \\\n",
+							"    .appName(\"ADLS-to-Synapse\") \\\n",
+							"    .config(\"spark.jars.packages\", \"com.microsoft.azure:spark-mssql-connector_2.12:1.2.0\") \\\n",
+							"    .getOrCreate()\n",
+							"\n",
+							"# Configuration Variables\n",
+							"STORAGE_ACCOUNT_NAME = \"tmrbronzelayer\"\n",
+							"CONTAINER_NAME = \"securities-price\"\n",
+							"ADLS_PATH = f\"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/data/\"\n",
+							"TEMP_FOLDER = f\"abfss://{CONTAINER_NAME}@{STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/temp/\"\n",
+							"\n",
+							"SQL_CONFIG = {\n",
+							"    \"server\": \"tmrlakehouse.sql.azuresynapse.net\",\n",
+							"    \"database\": \"tmr_dwh\",\n",
+							"    \"user\": \"sqladminuser\",\n",
+							"    \"password\": \"Le tuan $on 03\",\n",
+							"    \"table\": \"[dbo].[realtimesdata]\",\n",
+							"    \"jdbc_url\": \"jdbc:sqlserver://tmrlakehouse.sql.azuresynapse.net:1433;database=tmr_dwh;\"\n",
+							"                 \"encrypt=true;trustServerCertificate=false;loginTimeout=30;\"\n",
+							"}\n",
+							"\n",
+							"# Define Schema - Đảm bảo tương thích với dữ liệu nguồn\n",
+							"DATA_SCHEMA = StructType([\n",
+							"    StructField(\"data_time\", StringType(), True),\n",
+							"    StructField(\"data_date\", StringType(), True),\n",
+							"    StructField(\"resolution\", LongType(), True),\n",
+							"    StructField(\"ticker\", StringType(), True),\n",
+							"    StructField(\"open_price\", FloatType(), True),\n",
+							"    StructField(\"highest_price\", FloatType(), True),\n",
+							"    StructField(\"lowest_price\", FloatType(), True),\n",
+							"    StructField(\"close_price\", FloatType(), True),\n",
+							"    StructField(\"volume\", FloatType(), True),\n",
+							"    StructField(\"created_at\", StringType(), True),\n",
+							"    StructField(\"updated_at\", StringType(), True),\n",
+							"])\n",
+							"\n",
+							"def read_json_from_adls(json_path):\n",
+							"    \"\"\"Reads JSON data from ADLS and returns a Spark DataFrame.\"\"\"\n",
+							"    print(f\"📥 Reading data from ADLS: {json_path}\")\n",
+							"    try:\n",
+							"        df = spark.read.schema(DATA_SCHEMA).json(json_path)\n",
+							"        df.show(5)\n",
+							"        return df\n",
+							"    except Exception as e:\n",
+							"        print(f\"⚠️ Error reading JSON from ADLS: {e}\")\n",
+							"        return None\n",
+							"\n",
+							"def create_synapse_table():\n",
+							"    \"\"\"Creates the target table in Synapse if it doesn't exist.\"\"\"\n",
+							"    print(f\"🔧 Creating table if not exists: {SQL_CONFIG['table']}\")\n",
+							"    \n",
+							"    # Kết nối JDBC để thực thi SQL trực tiếp\n",
+							"    conn_properties = {\n",
+							"        \"user\": SQL_CONFIG['user'],\n",
+							"        \"password\": SQL_CONFIG['password'],\n",
+							"        \"driver\": \"com.microsoft.sqlserver.jdbc.SQLServerDriver\"\n",
+							"    }\n",
+							"    \n",
+							"    # SQL tạo bảng với HEAP (không dùng columnstore) để tránh lỗi với cột ticker\n",
+							"    create_table_sql = f\"\"\"\n",
+							"    IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'{SQL_CONFIG['table']}') AND type in (N'U'))\n",
+							"    BEGIN\n",
+							"        CREATE TABLE {SQL_CONFIG['table']} (\n",
+							"            data_time VARCHAR(8000),\n",
+							"            data_date VARCHAR(8000),\n",
+							"            resolution BIGINT,\n",
+							"            ticker VARCHAR(8000),\n",
+							"            open_price FLOAT, \n",
+							"            highest_price FLOAT,\n",
+							"            lowest_price FLOAT,\n",
+							"            close_price FLOAT,\n",
+							"            volume FLOAT,\n",
+							"            created_at VARCHAR(8000),\n",
+							"            updated_at VARCHAR(8000)\n",
+							"        ) WITH (HEAP);\n",
+							"    END\n",
+							"    \"\"\"\n",
+							"    \n",
+							"    try:\n",
+							"        # Thực thi câu lệnh SQL thông qua JDBC\n",
+							"        from py4j.java_gateway import java_import\n",
+							"        java_import(spark._sc._jvm, \"java.sql.DriverManager\")\n",
+							"        java_import(spark._sc._jvm, \"java.sql.Connection\")\n",
+							"        java_import(spark._sc._jvm, \"java.sql.Statement\")\n",
+							"        \n",
+							"        conn = spark._sc._jvm.DriverManager.getConnection(\n",
+							"            SQL_CONFIG['jdbc_url'],\n",
+							"            SQL_CONFIG['user'],\n",
+							"            SQL_CONFIG['password']\n",
+							"        )\n",
+							"        stmt = conn.createStatement()\n",
+							"        stmt.execute(create_table_sql)\n",
+							"        stmt.close()\n",
+							"        conn.close()\n",
+							"        \n",
+							"        print(f\"✅ Table {SQL_CONFIG['table']} created successfully or already exists\")\n",
+							"    except Exception as e:\n",
+							"        print(f\"❌ Error creating table: {e}\")\n",
+							"\n",
+							"def write_to_synapse(df):\n",
+							"    \"\"\"Writes DataFrame to Azure Synapse Dedicated SQL Pool using JDBC.\"\"\"\n",
+							"    print(f\"📤 Writing data to Synapse Table: {SQL_CONFIG['table']}\")\n",
+							"    \n",
+							"    try:\n",
+							"        # Ghi DataFrame vào Synapse\n",
+							"        df.write \\\n",
+							"            .format(\"jdbc\") \\\n",
+							"            .option(\"url\", SQL_CONFIG['jdbc_url']) \\\n",
+							"            .option(\"dbtable\", SQL_CONFIG['table']) \\\n",
+							"            .option(\"user\", SQL_CONFIG['user']) \\\n",
+							"            .option(\"password\", SQL_CONFIG['password']) \\\n",
+							"            .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\n",
+							"            .option(\"batchsize\", 5000) \\\n",
+							"            .mode(\"append\") \\\n",
+							"            .save()\n",
+							"        \n",
+							"        print(f\"✅ Data successfully written to {SQL_CONFIG['table']}\")\n",
+							"    except Exception as e:\n",
+							"        print(f\"❌ Error writing to Synapse Table: {e}\")\n",
+							"        print(f\"Error details: {str(e)}\")\n",
+							"\n",
+							"def main():\n",
+							"    # Tạo bảng trước khi đọc dữ liệu\n",
+							"    create_synapse_table()\n",
+							"    \n",
+							"    df = read_json_from_adls(ADLS_PATH + \"data_*.json\")\n",
+							"    if df and not df.isEmpty():\n",
+							"        write_to_synapse(df)\n",
+							"    else:\n",
+							"        print(\"⚠️ No valid data found for processing.\")\n",
+							"\n",
+							"if __name__ == \"__main__\":\n",
+							"    main()"
+						],
+						"outputs": [],
+						"execution_count": 7
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/sparkpool')]",
+			"type": "Microsoft.Synapse/workspaces/bigDataPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"autoPause": {
+					"enabled": true,
+					"delayInMinutes": 15
+				},
+				"autoScale": {
+					"enabled": true,
+					"maxNodeCount": 6,
+					"minNodeCount": 3
+				},
+				"nodeCount": 10,
+				"nodeSize": "Small",
+				"nodeSizeFamily": "MemoryOptimized",
+				"sparkVersion": "3.4",
+				"isComputeIsolationEnabled": false,
+				"sessionLevelPackagesEnabled": false,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "southeastasia"
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/tmr_dwh')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"collation": "SQL_Latin1_General_CP1_CI_AS",
+				"maxSizeBytes": 263882790666240,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "southeastasia"
+		}
+	]
+}
